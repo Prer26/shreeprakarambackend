@@ -1,22 +1,21 @@
-import express from "express";
-import mongoose from "mongoose";
-import cors from "cors";
-
-import enquiryRoutes from "./routes/enquiryRoutes.js";
-import reviewRoutes from "./routes/reviewRoutes.js";
-
+import express from 'express';
+import reviewRoutes from './routes/reviewRoutes.js'; // Adjust path as necessary
 
 const app = express();
 
-app.use(cors());
+// Middleware
 app.use(express.json());
 
-app.use("/api/enquiries", enquiryRoutes);
-app.use("/api/reviews", reviewRoutes);
+// Routes
+app.use('/reviews', reviewRoutes);
 
-mongoose.connect(
-  "mongodb://127.0.0.1:27017/divinedb", // your DB name here
-).then(() => console.log("MongoDB connected"))
-  .catch(err => console.log(err));
+// Root route
+app.get('/', (req, res) => {
+  res.send('Backend is running');
+});
 
-app.listen(5000, () => console.log("Server running on port 5000"));
+// Start server
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
