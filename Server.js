@@ -42,12 +42,20 @@ app.use("/api/reviews", reviewRoutes);
 // --- ROOT ROUTE / HEALTH CHECK (Crucial for deployment health checks) ---
 // This prevents the common "Cannot GET /" error on platforms like Render.
 app.get("/", (req, res) => {
+    // Helper function to safely display the connection string for debugging
+    const getDbUriForDisplay = (uri) => {
+        if (!uri) return "Not Set";
+        // Hide the password part of the URI for security
+        return uri.replace(/:[^@]+@/, ":***@");
+    };
+
     res.status(200).json({
         status: "success",
         message: "Shreeprakaram Backend API is running successfully!",
         version: "1.0",
         // This shows the port Render is using (e.g., 10000) or 5000 locally
-        serving_on: process.env.PORT || 5000 
+        serving_on: process.env.PORT || 5000,
+        db_uri: getDbUriForDisplay(process.env.MONGODB_URI)
     });
 });
 
@@ -67,10 +75,12 @@ app.use((req, res, next) => {
 const PORT = process.env.PORT || 5000;
 
 // Database Connection
-// Ensure process.env.MONGO_URL is set correctly on Render's Environment Variables page
-mongoose.connect(process.env.MONGO_URL)
+// We are now explicitly using MONGODB_URI for consistency with deployment settings.
+// CRITICAL FOR DEPLOYMENT: Ensure process.env.MONGODB_URI is set correctly
+// on your hosting platform (Render's Environment Variables page).
+mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
-    console.log("MongoDB connected");
+    console.log("MongoDB connected successfully!");
     
     // Server Start (only start server after successful DB connection)
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
