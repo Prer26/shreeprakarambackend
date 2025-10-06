@@ -8,28 +8,22 @@ dotenv.config();
 
 const app = express();
 
-// --- CORS Configuration (UPDATED) ---
-// Allowing only your Vercel frontend domain to access the API.
+// --- CORS Configuration ---
 const allowedOrigins = [
-    'https://shreeprakarm.vercel.app', // Your live frontend URL
-    'http://localhost:3000',           // Common local frontend dev port
-    'http://localhost:5173'            // Common local frontend dev port (e.g., Vite)
+    'https://shreeprakarm.vercel.app', 
+    'http://localhost:3000',           
+    'http://localhost:5173'            
 ];
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or postman)
     if (!origin) return callback(null, true); 
-    
-    // Check if the origin is in the allowed list
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      // Block requests from unauthorized origins
       callback(new Error('Not allowed by CORS'));
     }
   },
-  // Include credentials (cookies, auth headers) in CORS requests
   credentials: true 
 };
 
@@ -38,15 +32,52 @@ app.use(express.json());
 // --- END CORS Configuration ---
 
 
-// --- MOCK ROUTERS (Placeholder for imported routes) ---
-// In a real application, these would be imported from separate files.
-const enquiryRoutes = express.Router();
-enquiryRoutes.post("/", (req, res) => {
-    // Mock handler for creating an enquiry
-    console.log("Mock Enquiry Data:", req.body);
-    res.status(201).json({ message: "Enquiry received successfully." });
+// --- 1. Mongoose Schema Definition (NEW) ---
+
+// Define the schema for an Enquiry
+const EnquirySchema = new mongoose.Schema({
+    name: { type: String, required: true, trim: true },
+    email: { type: String, required: true, trim: true, lowercase: true, 
+             match: [/.+@.+\..+/, 'Please fill a valid email address'] },
+    message: { type: String, required: true, trim: true },
+    // Automatically adds createdAt and updatedAt fields
+    receivedAt: { type: Date, default: Date.now }
+}, { 
+    timestamps: false // We use the custom 'receivedAt' above, so we keep timestamps false
 });
 
+// Create the Mongoose Model
+const Enquiry = mongoose.model('Enquiry', EnquirySchema);
+
+// --- 2. Route Controller for Enquiries (UPDATED) ---
+
+const enquiryRoutes = express.Router();
+// POST route to submit a new enquiry
+enquiryRoutes.post("/", async (req, res) => {
+    try {
+        // Create a new enquiry document using the model
+        const newEnquiry = new Enquiry(req.body);
+        
+        // Save the document to the MongoDB 'enquiries' collection
+        await newEnquiry.save();
+        
+        // Respond with success
+        res.status(201).json({ 
+            status: "success",
+            message: "Enquiry received and saved successfully.",
+            data: newEnquiry 
+        });
+    } catch (error) {
+        // Handle validation errors (e.g., missing required fields) or database errors
+        res.status(400).json({ 
+            status: "error",
+            message: "Failed to submit enquiry.",
+            error: error.message 
+        });
+    }
+});
+
+// --- MOCK ROUTERS (Now just reviews, will update next) ---
 const reviewRoutes = express.Router();
 reviewRoutes.get("/", (req, res) => {
     // Mock handler for fetching reviews
@@ -65,7 +96,7 @@ reviewRoutes.get("/", (req, res) => {
 app.use("/api/enquiries", enquiryRoutes);
 app.use("/api/reviews", reviewRoutes);
 
-// --- ROOT ROUTE / HEALTH CHECK (Crucial for deployment health checks) ---
+// --- ROOT ROUTE / HEALTH CHECK ---
 app.get("/", (req, res) => {
     const connectionString = process.env.MONGO_URL || process.env.MONGODB_URI || "Not configured";
     const maskedString = connectionString.replace(/:\/\/[^@:]+:[^@]+@/, '://<user>:<password>@');
